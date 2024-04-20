@@ -32,11 +32,24 @@ cp "./src/main.zig" $MAIN_FILE;
 
 zig build-exe -O ReleaseFast -femit-bin="$KATTIS_OUT" $MAIN_FILE;
 
+if [ $? -ne 0 ]; then
+    echo "Build failed."
+    exit -1;
+fi
+
+clear;
+
 for file in $SAMPLE_DIR/*.in; do
-    echo "BEGIN $file"
+    EXAMPLE=$(basename "$file" .in)
+    echo "BEGIN $EXAMPLE"
 
     cat $file | $KATTIS_OUT;
+    
+    echo "EXPECTED"
+
+    cat "$SAMPLE_DIR/$EXAMPLE.ans"
 
     echo "END"
+    echo "";
 done
 
