@@ -45,6 +45,7 @@ for file in $SAMPLE_DIR/*.in; do
 
     cat $file | $KATTIS_OUT;
     
+    echo "";
     echo "EXPECTED"
 
     cat "$SAMPLE_DIR/$EXAMPLE.ans"
