@@ -9,42 +9,50 @@ pub fn main() !void {
     var br = std.io.bufferedReader(in);
     const stdin = br.reader();
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    const stdout = std.io.getStdOut().writer();
 
-    const size = try readIntLine(a, stdin);
+    const size = try readIntLine(stdin);
 
-    var list = try a.alloc(usize, size);
-    defer a.free(list);
+    const bigbuf = try a.alloc(u8, size * 20);
+    defer a.free(bigbuf);
 
-    for (0..size) |i| {
-        list[size - i - 1] = try readIntLine(a, stdin);
-    }
+    const to_print = try readLinesStupid(stdin, size, bigbuf);
 
-    for (list) |l| {
-        try std.fmt.format(stdout, "{d}\n", .{l});
-    }
-
-    try bw.flush();
+    _ = try stdout.write(to_print);
 }
 
-fn readIntLine(a: std.mem.Allocator, reader: anytype) !usize {
-    const line = try readLineAlloc(a, reader);
-    defer a.free(line);
-    return try std.fmt.parseInt(usize, line, 10);
-}
-
-fn readLineAlloc(a: std.mem.Allocator, reader: anytype) ![]const u8 {
-    var list = std.ArrayList(u8).init(a);
-    defer list.deinit();
-    var writer = list.writer();
-
-    reader.streamUntilDelimiter(writer, '\n', null) catch |err| {
+fn readIntLine(reader: anytype) !usize {
+    const max_size = 20;
+    var buf: [max_size]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+    var writer = stream.writer();
+    reader.streamUntilDelimiter(writer, '\n', max_size) catch |err| {
         if (err != error.EndOfStream) {
             return err;
         }
     };
+    return try std.fmt.parseInt(usize, buf[0..stream.pos], 10);
+}
 
-    return try list.toOwnedSlice();
+// A sub-slice of the given buffer that was written to.
+fn readLinesStupid(reader: anytype, lines: usize, bigbuf: []u8) ![]const u8 {
+    var head = bigbuf.len;
+
+    const max_size = 20;
+    var buf: [max_size]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+    var writer = stream.writer();
+
+    var i: usize = 0;
+    while (i < lines) : (i += 1) {
+        stream.reset();
+        try reader.streamUntilDelimiter(writer, '\n', max_size);
+        try writer.writeByte('\n');
+
+        const len = stream.pos;
+        @memcpy(bigbuf[(head - len)..head], buf[0..len]);
+        head -= len;
+    }
+
+    return bigbuf[head..];
 }
