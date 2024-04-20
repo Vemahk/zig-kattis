@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub fn main() !void {
-    var bigbuf: [1 << 20]u8 = undefined;
+    var bigbuf: [2 << 20]u8 = undefined;
     const len = try std.io.getStdIn().readAll(&bigbuf);
 
     var read = std.io.fixedBufferStream(bigbuf[0..len]);
