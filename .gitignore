@@ -1,4 +1,3 @@
 zig-out/
 zig-cache/
-data/*
-!data/pull.sh
+data/
