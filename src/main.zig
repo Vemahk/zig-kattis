@@ -27,7 +27,8 @@ pub fn main() !void {
 }
 
 fn countPrimeFactors(a: std.mem.Allocator, num: usize) !usize {
-    const primes = try getPrimesUpTo(a, num);
+    const s = sqrtFloor(num);
+    const primes = try getPrimesUpTo(a, s);
     defer a.free(primes);
 
     var count: usize = 0;
@@ -42,10 +43,13 @@ fn countPrimeFactors(a: std.mem.Allocator, num: usize) !usize {
 
     std.log.debug("{d} remaining.", .{x});
 
+    if (x > 1) count += 1;
+
     return count;
 }
 
 fn getPrimesUpTo(a: std.mem.Allocator, max: usize) ![]const usize {
+    var timer = try std.time.Timer.start();
     if (max < 2) {
         return try a.alloc(usize, 0);
     }
@@ -87,6 +91,9 @@ fn getPrimesUpTo(a: std.mem.Allocator, max: usize) ![]const usize {
             sieve[x] = false;
         }
     }
+
+    const t1 = timer.lap();
+    std.log.debug("Primes to {d} took {d}ns", .{ max, t1 });
 
     return list.toOwnedSlice();
 }
