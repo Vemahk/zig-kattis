@@ -1,15 +1,15 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const in = std.io.getStdIn().reader();
-    var br = std.io.bufferedReader(in);
-    const stdin = br.reader();
+    var bigbuf: [1 << 20]u8 = undefined;
+    const len = try std.io.getStdIn().readAll(&bigbuf);
+
+    var read = std.io.fixedBufferStream(bigbuf[0..len]);
+    var reader = read.reader();
+
+    const to_print = try readLinesStupid(reader, bigbuf[len..]);
 
     const stdout = std.io.getStdOut().writer();
-
-    var bigbuf: [1 << 20]u8 = undefined;
-    const to_print = try readLinesStupid(stdin, &bigbuf);
-
     _ = try stdout.write(to_print);
 }
 
