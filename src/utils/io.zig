@@ -14,10 +14,8 @@ fn readLineAlloc(a: std.mem.Allocator, reader: anytype) ![]const u8 {
     return try list.toOwnedSlice();
 }
 
-fn nextInt(comptime T: type, reader: anytype) !T {
-    const max_size = 20;
-    var buf: [max_size]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
+fn next(reader: anytype, buf: []u8) !usize {
+    var stream = std.io.fixedBufferStream(buf);
     var writer = stream.writer();
 
     while (true) {
@@ -33,5 +31,12 @@ fn nextInt(comptime T: type, reader: anytype) !T {
         try writer.writeByte(b);
     }
 
-    return try std.fmt.parseInt(T, buf[0..stream.pos], 10);
+    return stream.pos;
+}
+
+fn nextInt(comptime T: type, reader: anytype) !T {
+    const max_size = 20;
+    var buf: [max_size]u8 = undefined;
+    const len = try next(reader, &buf);
+    return try std.fmt.parseInt(T, buf[0..len], 10);
 }

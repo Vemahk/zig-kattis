@@ -1,36 +1,76 @@
 const std = @import("std");
+const builtin = @import("builtin");
+
+const File = std.fs.File;
+const fd_t = std.os.fd_t;
 
 pub fn main() !void {
-    const in = std.io.getStdIn().reader();
-    var br = std.io.bufferedReader(in);
-    const stdin = br.reader();
+    var old_stdout: ?std.os.fd_t = null;
 
-    const N = try nextInt(usize, stdin); // rooms
-    const M = try nextInt(usize, stdin); // teams
+    var stdin = std.io.getStdIn();
+    var stdout = std.io.getStdOut();
 
-    var list = MaxList(u8, 1000){};
+    if (builtin.mode == .Debug) {
+        const c_pipes = try std.os.pipe();
+        const p_pipes = try std.os.pipe();
+        const pid = try std.os.fork();
 
-    const min = M / N;
-    const num_max = M % N;
+        if (pid != 0) {
+            std.os.close(p_pipes[1]);
+            std.os.close(c_pipes[0]);
+            const in = File{ .handle = p_pipes[0] };
+            const out = File{ .handle = c_pipes[1] };
 
-    for (0..N) |n| {
-        for (0..min) |_|
-            list.add('*');
+            return judge(in, out);
+        }
 
-        if (n < num_max)
-            list.add('*');
+        // keep a copy of old stdout, just in case.
+        old_stdout = try std.os.dup(std.os.STDOUT_FILENO);
 
-        list.add('\n');
+        // redirect stdin and stdout to the parent.
+        stdin = .{ .handle = c_pipes[0] };
+        stdout = .{ .handle = p_pipes[1] };
+        std.os.close(c_pipes[1]);
+        std.os.close(p_pipes[0]);
     }
 
-    const stdout = std.io.getStdOut().writer();
-    try stdout.writeAll(list.slice());
+    guess(stdin, stdout) catch |err| {
+        const out = old_stdout orelse stdout.handle;
+        _ = try std.os.write(out, "Child crashed!");
+
+        return err;
+    };
 }
 
-fn nextInt(comptime T: type, reader: anytype) !T {
-    const max_size = 20;
-    var buf: [max_size]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
+fn guess(stdin: File, stdout: File) !void {
+    const query_fmt = "? {d} {d} {d} {d}\n";
+    _ = query_fmt;
+    const ans_fmt = "! {d}\n";
+    _ = ans_fmt;
+
+    const in = stdin.reader();
+    var br = std.io.bufferedReader(in);
+    const reader = br.reader();
+    var buf: [20]u8 = undefined;
+    const len = try next(reader, &buf);
+
+    const out = stdout.writer();
+    try std.fmt.format(out, "We read {s}!\n", .{buf[0..len]});
+}
+
+fn judge(in: File, out: File) !void {
+    _ = try out.write("ASLKJF\n");
+    var buf: [100]u8 = undefined;
+    var b_stream = std.io.fixedBufferStream(&buf);
+    var b_writer = b_stream.writer();
+    try in.reader().streamUntilDelimiter(b_writer, '\n', null);
+
+    var stdout = std.io.getStdOut().writer();
+    try std.fmt.format(stdout, "Received '{s}' from the child.", .{buf[0..b_stream.pos]});
+}
+
+fn next(reader: anytype, buf: []u8) !usize {
+    var stream = std.io.fixedBufferStream(buf);
     var writer = stream.writer();
 
     while (true) {
@@ -46,24 +86,5 @@ fn nextInt(comptime T: type, reader: anytype) !T {
         try writer.writeByte(b);
     }
 
-    return try std.fmt.parseInt(T, buf[0..stream.pos], 10);
-}
-
-pub fn MaxList(comptime T: type, comptime max_size: comptime_int) type {
-    return struct {
-        const Self = @This();
-
-        buf: [max_size]T = undefined,
-        len: usize = 0,
-
-        pub fn add(self: *Self, t: T) void {
-            if (self.len >= max_size) unreachable;
-            self.buf[self.len] = t;
-            self.len += 1;
-        }
-
-        pub inline fn slice(self: *Self) []T {
-            return self.buf[0..self.len];
-        }
-    };
+    return stream.pos;
 }
