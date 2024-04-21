@@ -30,7 +30,7 @@ MAIN_FILE="./src/$1.zig";
 
 cp "./src/main.zig" $MAIN_FILE;
 
-zig build-exe -O ReleaseFast -femit-bin="$KATTIS_OUT" $MAIN_FILE;
+zig build-exe -O ReleaseSmall -femit-bin="$KATTIS_OUT" $MAIN_FILE;
 
 if [ $? -ne 0 ]; then
     echo "Build failed."
