@@ -4,9 +4,9 @@ const builtin = @import("builtin");
 const File = std.fs.File;
 const fd_t = std.os.fd_t;
 
-pub fn main() !void {
-    var old_stdout: ?std.os.fd_t = null;
+const MAX_N = 20_000;
 
+pub fn main() !void {
     var stdin = std.io.getStdIn();
     var stdout = std.io.getStdOut();
 
@@ -24,9 +24,6 @@ pub fn main() !void {
             return judge(in, out);
         }
 
-        // keep a copy of old stdout, just in case.
-        old_stdout = try std.os.dup(std.os.STDOUT_FILENO);
-
         // redirect stdin and stdout to the parent.
         stdin = .{ .handle = c_pipes[0] };
         stdout = .{ .handle = p_pipes[1] };
@@ -35,9 +32,7 @@ pub fn main() !void {
     }
 
     guess(stdin, stdout) catch |err| {
-        const out = old_stdout orelse stdout.handle;
-        _ = try std.os.write(out, "Child crashed!");
-
+        _ = try std.io.getStdOut().write("Child crashed!");
         return err;
     };
 }
@@ -46,30 +41,80 @@ fn guess(stdin: File, stdout: File) !void {
     const query_fmt = "? {d} {d} {d} {d}\n";
     _ = query_fmt;
     const ans_fmt = "! {d}\n";
-    _ = ans_fmt;
 
     const in = stdin.reader();
     var br = std.io.bufferedReader(in);
     const reader = br.reader();
     var buf: [20]u8 = undefined;
     const len = try next(reader, &buf);
+    _ = len;
 
     const out = stdout.writer();
-    try std.fmt.format(out, "We read {s}!\n", .{buf[0..len]});
+    try std.fmt.format(out, ans_fmt, .{0});
 }
 
-fn judge(in: File, out: File) !void {
-    _ = try out.write("ASLKJF\n");
-    var buf: [100]u8 = undefined;
-    var b_stream = std.io.fixedBufferStream(&buf);
-    var b_writer = b_stream.writer();
-    try in.reader().streamUntilDelimiter(b_writer, '\n', null);
+fn judge(from_child: File, to_child: File) !void {
+    const Cmd = enum(u1) {
+        Query,
+        Ans,
+    };
 
-    var stdout = std.io.getStdOut().writer();
-    try std.fmt.format(stdout, "Received '{s}' from the child.", .{buf[0..b_stream.pos]});
+    const ts: u64 = @intCast(std.time.milliTimestamp());
+    var prng = std.rand.DefaultPrng.init(ts);
+    var rand = prng.random();
+    const size = rand.intRangeAtMost(usize, 1, MAX_N);
+
+    var board_buf: [MAX_N]bool = undefined;
+    var board = board_buf[0..size];
+    for (0..size) |i| board[i] = rand.boolean();
+
+    const closure = struct {
+        board: []bool,
+        pub fn numTrue(self: @This(), a: usize, b: usize) usize {
+            if (a == b) return 0;
+            return std.mem.count(bool, self.board[a..b], &[_]bool{true});
+        }
+    }{ .board = board };
+
+    const answer = closure.numTrue(0, size);
+
+    const out_fmt = "{d}\n";
+    const stdout = std.io.getStdOut().writer();
+    const reader = from_child.reader();
+    const writer = to_child.writer();
+    try std.fmt.format(writer, out_fmt, .{size});
+
+    var query_count: usize = 0;
+
+    while (true) {
+        const cmd: Cmd = switch (try reader.readByte()) {
+            '!' => .Ans,
+            '?' => .Query,
+            else => return error.UnknownChildCommand,
+        };
+
+        const space = try reader.readByte();
+        if (space != ' ') @panic("bad input format - a space should follow a command.");
+
+        switch (cmd) {
+            .Ans => {
+                const guess_val = try nextInt(usize, reader);
+
+                if (guess_val == answer) {
+                    try std.fmt.format(stdout, "Correct! The answer is {d}! Took {d} queries.\n", .{ answer, query_count });
+                } else {
+                    try std.fmt.format(stdout, "Incorrect! The answer is {d}! Took {d} queries.\n", .{ answer, query_count });
+                }
+                return;
+            },
+            .Query => {
+                query_count += 1;
+            },
+        }
+    }
 }
 
-fn next(reader: anytype, buf: []u8) !usize {
+fn next(reader: anytype, buf: []u8) ![]const u8 {
     var stream = std.io.fixedBufferStream(buf);
     var writer = stream.writer();
 
@@ -86,5 +131,12 @@ fn next(reader: anytype, buf: []u8) !usize {
         try writer.writeByte(b);
     }
 
-    return stream.pos;
+    return buf[0..stream.pos];
+}
+
+fn nextInt(comptime T: type, reader: anytype) !T {
+    const max_size = 20;
+    var buf: [max_size]u8 = undefined;
+    const str = try next(reader, &buf);
+    return try std.fmt.parseInt(T, str, 10);
 }
