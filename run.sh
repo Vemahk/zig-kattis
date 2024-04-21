@@ -26,7 +26,7 @@ ZIG_OUT="./zig-out"
 mkdir -p $ZIG_OUT;
 
 KATTIS_OUT="$ZIG_OUT/$TARGET";
-MAIN_FILE="./src/$1.zig";
+MAIN_FILE="./src/problems/$1.zig";
 
 cp "./src/main.zig" $MAIN_FILE;
 
