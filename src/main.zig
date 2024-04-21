@@ -93,7 +93,7 @@ const AdjLookup = struct {
             return a.a < b.a;
         }
 
-        pub fn search(comptime _: type, a: usize, mid: Link) std.math.Order {
+        pub fn search(_: void, a: usize, mid: Link) std.math.Order {
             if (a == mid.a) return .eq;
             if (a < mid.a) return .lt;
             return .gt;
@@ -122,33 +122,27 @@ const AdjLookup = struct {
 
     pub fn findLinks(self: *@This(), id: usize) ?[]Link {
         const l = self.links();
-        const fm = std.sort.binarySearch(Link, id, l, void, Link.search) orelse return null;
+        const fm = std.sort.binarySearch(Link, id, l, {}, Link.search) orelse return null;
 
         var s: usize = 0;
         var fs = fm;
-        while (s < fs) {
+        while (s < fs and l[fs - 1].a == id) {
             const mi = (fs - s) / 2 + s;
             if (l[mi].a == id) {
                 fs = mi;
-
-                if (mi == 0 or l[mi - 1].a != id)
-                    break;
             } else {
-                s = fs + 1;
+                s = mi + 1;
             }
         }
 
         s = fm;
         var fe = l.len;
-        while (s < fe) {
+        while (s < fe and l[fe - 1].a != id) {
             const mi = (fe - s) / 2 + s;
             if (l[mi].a == id) {
                 s = mi + 1;
             } else {
                 fe = mi;
-
-                if (l[mi - 1].a == id)
-                    break;
             }
         }
 
@@ -180,28 +174,29 @@ fn MaxQueue(comptime T: type, comptime max_size: comptime_int) type {
 
 fn fill(h: []const usize, al: *AdjLookup, hi: []usize) !void {
     const Val = struct {
-        i: usize,
+        id: usize,
         hi: usize,
     };
 
-    var visited: [MAX_N]bool = undefined;
-    initSlice(bool, &visited, false);
+    var v_buf: [MAX_N]bool = undefined;
+    var visited = v_buf[0..hi.len];
+    initSlice(bool, visited, false);
 
     var q = MaxQueue(Val, MAX_N){};
     for (h) |id| {
         if (visited[id]) continue;
         visited[id] = true;
-        q.push(.{ .i = id, .hi = 0 });
+        q.push(.{ .id = id, .hi = 0 });
     }
 
     while (q.poll()) |val| {
-        hi[val.i] = val.hi;
-        const links = al.findLinks(val.i) orelse continue;
+        hi[val.id] = val.hi;
+        const links = al.findLinks(val.id) orelse continue;
         for (links) |linked| {
             const t = linked.b; // target
             if (visited[t]) continue;
             visited[t] = true;
-            q.push(.{ .i = t, .hi = val.hi + 1 });
+            q.push(.{ .id = t, .hi = val.hi + 1 });
         }
     }
 }
