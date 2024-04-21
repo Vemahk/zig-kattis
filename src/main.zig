@@ -2,11 +2,6 @@ const std = @import("std");
 
 // graph distance
 
-inline fn scream(comptime i: comptime_int) void {
-    _ = i;
-    // std.log.debug("scream {d}", .{i});
-}
-
 const MAX_L = 10_000;
 const MAX_N = 1_000;
 const MAX_H = 1_000;
@@ -132,7 +127,6 @@ const AdjLookup = struct {
         var s: usize = 0;
         var fs = fm;
         while (s < fs) {
-            scream(1);
             const mi = (fs - s) / 2 + s;
             if (l[mi].a == id) {
                 fs = mi;
@@ -147,7 +141,6 @@ const AdjLookup = struct {
         s = fm;
         var fe = l.len;
         while (s < fe) {
-            scream(2);
             const mi = (fe - s) / 2 + s;
             if (l[mi].a == id) {
                 s = mi + 1;
@@ -202,9 +195,9 @@ fn fill(h: []const usize, al: *AdjLookup, hi: []usize) !void {
     }
 
     while (q.poll()) |val| {
-        scream(3);
         hi[val.i] = val.hi;
-        for (al.findLinks(val.i) orelse continue) |linked| {
+        const links = al.findLinks(val.i) orelse continue;
+        for (links) |linked| {
             const t = linked.b; // target
             if (visited[t]) continue;
             visited[t] = true;
