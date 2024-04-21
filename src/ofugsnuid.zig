@@ -1,5 +1,11 @@
 const std = @import("std");
 
+// reversing text;
+// main difficulty is reading & writing quickly.
+// minimize syscalls: read once, write once.
+// minimize allocations: knowing the limited read size,
+//  we can allocate only what we need on the stack.
+
 pub fn main() !void {
     var bigbuf: [2 << 20]u8 = undefined;
     const len = try std.io.getStdIn().readAll(&bigbuf);

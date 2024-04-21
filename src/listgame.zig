@@ -1,5 +1,7 @@
 const std = @import("std");
 
+// prime factorization.
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
