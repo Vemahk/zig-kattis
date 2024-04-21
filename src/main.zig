@@ -11,6 +11,16 @@ pub fn main() !void {
     var stdout = std.io.getStdOut();
 
     if (builtin.mode == .Debug) {
+        {
+            var args = std.process.args();
+            if (args.skip()) {
+                if (args.next()) |a| {
+                    if (std.mem.eql(u8, a, "judgeonly"))
+                        return judge(stdin, stdout);
+                }
+            }
+        }
+
         const c_pipes = try std.os.pipe();
         const p_pipes = try std.os.pipe();
         const pid = try std.os.fork();
@@ -109,6 +119,19 @@ fn judge(from_child: File, to_child: File) !void {
             },
             .Query => {
                 query_count += 1;
+                var ints: [4]usize = undefined;
+                try nextInts(usize, reader, &ints);
+
+                const ac = closure.numTrue(ints[0], ints[1]);
+                const bc = closure.numTrue(ints[2], ints[3]);
+
+                const order = std.math.order(ac, bc);
+
+                try to_child.writeAll(switch (order) {
+                    .eq => "0\n",
+                    .lt => "1\n",
+                    .gt => "-1\n",
+                });
             },
         }
     }
@@ -139,4 +162,13 @@ fn nextInt(comptime T: type, reader: anytype) !T {
     var buf: [max_size]u8 = undefined;
     const str = try next(reader, &buf);
     return try std.fmt.parseInt(T, str, 10);
+}
+
+fn nextInts(comptime T: type, reader: anytype, out: []T) !void {
+    const max_size = 20;
+    var buf: [max_size]u8 = undefined;
+    for (out) |*o| {
+        const str = try next(reader, &buf);
+        o.* = try std.fmt.parseInt(T, str, 10);
+    }
 }
