@@ -13,11 +13,10 @@ pub fn main() !void {
     if (builtin.mode == .Debug) {
         {
             var args = std.process.args();
-            if (args.skip()) {
-                if (args.next()) |a| {
-                    if (std.mem.eql(u8, a, "judgeonly"))
-                        return judge(stdin, stdout);
-                }
+            _ = args.skip();
+            if (args.next()) |a| {
+                if (std.mem.eql(u8, a, "judgeonly"))
+                    return try judge(stdin, stdout);
             }
         }
 
@@ -41,27 +40,88 @@ pub fn main() !void {
         std.os.close(p_pipes[0]);
     }
 
-    guess(stdin, stdout) catch |err| {
-        _ = try std.io.getStdOut().write("Child crashed!");
+    const player = Player{
+        .in = stdin.reader(),
+        .out = stdout.writer(),
+    };
+    player.play() catch |err| {
+        std.log.err("Child crashed!", .{});
         return err;
     };
 }
 
-fn guess(stdin: File, stdout: File) !void {
-    const query_fmt = "? {d} {d} {d} {d}\n";
-    _ = query_fmt;
-    const ans_fmt = "! {d}\n";
+const Weight = enum(u2) {
+    Left,
+    Center,
+    Right,
+};
 
-    const in = stdin.reader();
-    var br = std.io.bufferedReader(in);
-    const reader = br.reader();
-    var buf: [20]u8 = undefined;
-    const len = try next(reader, &buf);
-    _ = len;
+const Player = struct {
+    in: File.Reader,
+    out: File.Writer,
 
-    const out = stdout.writer();
-    try std.fmt.format(out, ans_fmt, .{0});
-}
+    pub fn play(self: @This()) !void {
+        const n = try nextInt(usize, self.in);
+        const answer = try self.numOnes(0, n);
+        try std.fmt.format(self.out, "! {d}\n", .{answer});
+    }
+
+    fn numOnes(self: @This(), s: usize, e: usize) !usize {
+        const diff = e - s;
+
+        if (diff == 0) return 0;
+        if (diff == 1) return switch (try self.query(s, s, s, e)) {
+            .Right => 1,
+            .Center => 0,
+            else => unreachable,
+        };
+
+        var ms = s;
+        var me = e;
+        while (true) {
+            const breadth = me - ms;
+            const m: usize = ms + breadth / 2;
+            const q = try self.query(s, m, m, e);
+
+            switch (q) {
+                .Center => {},
+                .Left => {
+                    if (breadth > 2) {
+                        me = m;
+                        continue;
+                    }
+                },
+                .Right => {
+                    if (breadth > 2) {
+                        ms = m;
+                        continue;
+                    }
+                },
+            }
+
+            const small_left = m - s < e - m;
+            const ns = if (small_left) s else m;
+            const ne = if (small_left) m else e;
+            var result = try self.numOnes(ns, ne) * 2;
+            if (q != .Center) {
+                if ((q == .Left) == small_left) {
+                    result -= 1;
+                } else result += 1;
+            }
+            return result;
+        }
+    }
+
+    fn query(self: @This(), a: usize, b: usize, c: usize, d: usize) !Weight {
+        try std.fmt.format(self.out, "? {d} {d} {d} {d}\n", .{ a, b, c, d });
+        return switch (try nextInt(i2, self.in)) {
+            -1 => .Left,
+            0 => .Center,
+            1 => .Right,
+            else => unreachable,
+        };
+    }
+};
 
 fn judge(from_child: File, to_child: File) !void {
     const Cmd = enum(u1) {
