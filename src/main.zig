@@ -73,10 +73,12 @@ fn judge(from_child: File, to_child: File) !void {
     var prng = std.rand.DefaultPrng.init(ts);
     var rand = prng.random();
     const size = rand.intRangeAtMost(usize, 1, MAX_N);
+    const answer = rand.uintAtMost(usize, size);
 
     var board_buf: [MAX_N]bool = undefined;
     var board = board_buf[0..size];
-    for (0..size) |i| board[i] = rand.boolean();
+    for (0..size) |i| board[i] = i < answer;
+    rand.shuffle(bool, board);
 
     const closure = struct {
         board: []bool,
@@ -85,8 +87,6 @@ fn judge(from_child: File, to_child: File) !void {
             return std.mem.count(bool, self.board[a..b], &[_]bool{true});
         }
     }{ .board = board };
-
-    const answer = closure.numTrue(0, size);
 
     const out_fmt = "{d}\n";
     const stdout = std.io.getStdOut().writer();
