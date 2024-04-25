@@ -6,12 +6,12 @@ const MAX_STRLEN = 10;
 
 const Id = u17;
 const MAX_INPUT_SIZE = 7 + ((MAX_STRLEN + 1) << 1) + 10;
-const MAX_STRMAP_SIZE = (@sizeOf(Id) + @sizeOf([]const u8)) * MAX_N;
+// const MAX_STRMAP_SIZE = (@sizeOf(Id) + @sizeOf([]const u8)) * MAX_N;
+const MAX_STRMAP_SIZE = 4 << 20;
 
 const MAX_MEM_SIZE = MAX_INPUT_SIZE + (MAX_STRMAP_SIZE * 2);
 
 pub fn main() !void {
-    std.log.err("MAX_MEM_SIZE {d}", .{MAX_MEM_SIZE});
     const stdout = std.io.getStdOut().writer();
 
     const alloc = std.heap.page_allocator;
@@ -26,6 +26,9 @@ pub fn main() !void {
             break :blk try std.io.getStdIn().readAll(heap_mem);
         }
     };
+
+    // var timer = try std.time.Timer.start();
+    // defer std.log.err("time: {d}", .{timer.lap()});
 
     var in_i: usize = 0;
     const N_str = next(heap_mem, &in_i);
@@ -52,9 +55,10 @@ pub fn main() !void {
     }{};
 
     try strs.map.ensureTotalCapacity(ba.allocator(), MAX_N);
+    // std.log.err("curiosity {d}", .{ba.end_index});
 
     var loves: [MAX_N]Id = undefined;
-    var loved: [MAX_N]Id = undefined;
+    var loved: [MAX_N]usize = undefined;
     var taken: [MAX_N]bool = undefined;
 
     for (0..N) |i| {
@@ -70,13 +74,15 @@ pub fn main() !void {
         const b = next(heap_mem, &in_i);
         const b_id = strs.assign(b);
 
-        if (loves[b_id] == a_id) { // they luv each other uwu
-            taken[a_id] = true;
-            taken[b_id] = true;
-        }
+        // std.log.err("{s}({d}) {s}({d})", .{ a, a_id, b, b_id });
 
         loves[a_id] = b_id;
         loved[b_id] += 1;
+
+        if (a_id != b_id and loves[b_id] == a_id) { // they luv each other uwu
+            taken[a_id] = true;
+            taken[b_id] = true;
+        }
     }
 
     var arrows: usize = 0;
@@ -93,13 +99,13 @@ pub fn main() !void {
             const past_lovers_lover = loves[lover];
             loves[lover] = i;
             loved[i] += 1; // yay!
+            loved[past_lovers_lover] -= 1;
             taken[lover] = true;
             taken[i] = true;
             arrows += 1;
 
-            std.log.debug("{d} now loves {d}", .{ lover, i });
+            // std.log.debug("{d} now loves {d}", .{ lover, i });
 
-            loved[past_lovers_lover] -= 1;
             i = past_lovers_lover;
         }
     }
@@ -113,19 +119,19 @@ pub fn main() !void {
 
             const lover = loves[i];
             if (i == lover or taken[lover]) {
-                std.log.debug("{d} is abandoned", .{i});
+                // std.log.debug("{d} is abandoned", .{i});
                 break;
             }
 
             const past_lovers_lover = loves[lover];
             loves[lover] = i;
             loved[i] += 1; // yay!
+            loved[past_lovers_lover] -= 1;
             taken[lover] = true;
             taken[i] = true;
 
-            std.log.debug("{d} now loves {d}", .{ lover, i });
+            // std.log.debug("{d} now loves {d}", .{ lover, i });
 
-            loved[past_lovers_lover] -= 1;
             i = past_lovers_lover;
         }
     }
@@ -179,7 +185,7 @@ fn fuzz(buf: []u8) !usize {
 
     for (out_order[0..N]) |lover| {
         const l = loves[lover];
-        try std.fmt.format(writer, "{d} {d}\n", .{ lover, l });
+        try std.fmt.format(writer, "{d:0>10} {d:0>10}\n", .{ lover, l });
     }
 
     return stream.pos;
