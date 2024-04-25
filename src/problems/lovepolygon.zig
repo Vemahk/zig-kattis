@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const MAX_N = 100_000;
 const MAX_STRLEN = 10;
@@ -7,16 +8,24 @@ const Id = u17;
 const MAX_INPUT_SIZE = 7 + ((MAX_STRLEN + 1) << 1) + 10;
 const MAX_STRMAP_SIZE = (@sizeOf(Id) + @sizeOf([]const u8)) * MAX_N;
 
-const MAX_MEM_SIZE = MAX_INPUT_SIZE + (MAX_STRMAP_SIZE * 3 / 2);
+const MAX_MEM_SIZE = MAX_INPUT_SIZE + (MAX_STRMAP_SIZE * 2);
 
 pub fn main() !void {
+    std.log.err("MAX_MEM_SIZE {d}", .{MAX_MEM_SIZE});
     const stdout = std.io.getStdOut().writer();
 
     const alloc = std.heap.page_allocator;
 
     var heap_mem = try alloc.alloc(u8, MAX_MEM_SIZE);
     defer alloc.free(heap_mem);
-    const in_len = try std.io.getStdIn().readAll(heap_mem);
+
+    const in_len = blk: {
+        if (builtin.mode == .Debug) {
+            break :blk try fuzz(heap_mem);
+        } else {
+            break :blk try std.io.getStdIn().readAll(heap_mem);
+        }
+    };
 
     var in_i: usize = 0;
     const N_str = next(heap_mem, &in_i);
@@ -143,4 +152,35 @@ fn next(buf: []u8, start: *usize) []const u8 {
 
     start.* = i;
     return buf[s..i];
+}
+
+fn fuzz(buf: []u8) !usize {
+    const ts: u64 = @intCast(std.time.milliTimestamp());
+    std.log.err("seed {d}", .{ts});
+
+    var prng = std.rand.DefaultPrng.init(ts);
+    var rand = prng.random();
+
+    var stream = std.io.fixedBufferStream(buf);
+    var writer = stream.writer();
+
+    //const N = rand.intRangeAtMost(usize, 2, MAX_N);
+    const N = MAX_N;
+
+    try std.fmt.format(writer, "{d}\n", .{N});
+
+    var loves: [MAX_N]usize = undefined;
+    for (0..N) |i| loves[i] = i;
+    rand.shuffle(usize, loves[0..N]);
+
+    var out_order: [MAX_N]usize = undefined;
+    for (0..N) |i| out_order[i] = i;
+    rand.shuffle(usize, out_order[0..N]);
+
+    for (out_order[0..N]) |lover| {
+        const l = loves[lover];
+        try std.fmt.format(writer, "{d} {d}\n", .{ lover, l });
+    }
+
+    return stream.pos;
 }
