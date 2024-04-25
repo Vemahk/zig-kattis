@@ -104,7 +104,7 @@ pub fn main() !void {
             taken[i] = true;
             arrows += 1;
 
-            // std.log.debug("{d} now loves {d}", .{ lover, i });
+            // std.log.err("{d} now loves {d}", .{ lover, i });
 
             i = past_lovers_lover;
         }
@@ -115,11 +115,8 @@ pub fn main() !void {
 
         var i: Id = @intCast(t);
         while (true) {
-            arrows += 1;
-
             const lover = loves[i];
             if (i == lover or taken[lover]) {
-                // std.log.debug("{d} is abandoned", .{i});
                 break;
             }
 
@@ -129,11 +126,18 @@ pub fn main() !void {
             loved[past_lovers_lover] -= 1;
             taken[lover] = true;
             taken[i] = true;
+            arrows += 1;
 
-            // std.log.debug("{d} now loves {d}", .{ lover, i });
+            // std.log.err("{d} now loves {d}", .{ lover, i });
 
             i = past_lovers_lover;
         }
+    }
+
+    for (0..N) |t| {
+        if (taken[t]) continue;
+        arrows += 1;
+        // std.log.err("{d} is abandoned", .{t});
     }
 
     try std.fmt.format(stdout, "{d}\n", .{arrows});
