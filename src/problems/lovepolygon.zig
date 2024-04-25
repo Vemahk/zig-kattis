@@ -11,8 +11,6 @@ const MAX_MEM_SIZE = MAX_INPUT_SIZE + (MAX_STRMAP_SIZE * 3 / 2);
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var timer = try std.time.Timer.start();
-    defer std.log.err("time: {d}ns", .{timer.lap()});
 
     const alloc = std.heap.page_allocator;
 
@@ -63,14 +61,13 @@ pub fn main() !void {
         const b = next(heap_mem, &in_i);
         const b_id = strs.assign(b);
 
-        loves[a_id] = b_id;
-
-        loved[b_id] += 1;
-
         if (loves[b_id] == a_id) { // they luv each other uwu
             taken[a_id] = true;
             taken[b_id] = true;
         }
+
+        loves[a_id] = b_id;
+        loved[b_id] += 1;
     }
 
     var arrows: usize = 0;
@@ -91,6 +88,8 @@ pub fn main() !void {
             taken[i] = true;
             arrows += 1;
 
+            std.log.debug("{d} now loves {d}", .{ lover, i });
+
             loved[past_lovers_lover] -= 1;
             i = past_lovers_lover;
         }
@@ -104,13 +103,18 @@ pub fn main() !void {
             arrows += 1;
 
             const lover = loves[i];
-            if (taken[lover]) break;
+            if (i == lover or taken[lover]) {
+                std.log.debug("{d} is abandoned", .{i});
+                break;
+            }
 
             const past_lovers_lover = loves[lover];
             loves[lover] = i;
             loved[i] += 1; // yay!
             taken[lover] = true;
             taken[i] = true;
+
+            std.log.debug("{d} now loves {d}", .{ lover, i });
 
             loved[past_lovers_lover] -= 1;
             i = past_lovers_lover;

@@ -11,8 +11,6 @@ const MAX_MEM_SIZE = MAX_INPUT_SIZE + (MAX_STRMAP_SIZE * 3 / 2);
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var timer = try std.time.Timer.start();
-    defer std.log.err("time: {d}ns", .{timer.lap()});
 
     const alloc = std.heap.page_allocator;
 
