@@ -20,44 +20,26 @@ pub fn main() !void {
     const in_len = try std.io.getStdIn().readAll(heap_mem);
 
     var ba = std.heap.FixedBufferAllocator.init(heap_mem[in_len..]);
-
-    var strs = struct {
-        map: std.StringHashMapUnmanaged(Id) = .{},
-        next_id: Id = 0,
-
-        pub fn assign(self: *@This(), str: []const u8) Id {
-            var result = self.map.getOrPutAssumeCapacity(str);
-            if (result.found_existing)
-                return result.value_ptr.*;
-
-            var id = self.next_id;
-            result.value_ptr.* = id;
-            self.next_id += 1;
-            return id;
-        }
-    }{};
-
-    try strs.map.ensureTotalCapacity(ba.allocator(), MAX_N);
+    const map_alloc = ba.allocator();
+    var strmap = std.StringHashMap(Id).init(map_alloc);
+    try strmap.ensureTotalCapacity(MAX_N);
 
     var in_i: usize = 0;
 
     const stdout = std.io.getStdOut().writer();
-
-    var loves: [MAX_N]Id = undefined;
 
     const N_str = next(heap_mem, &in_i);
     const N = try std.fmt.parseInt(usize, N_str, 10);
     if ((N & 1) == 1)
         return try stdout.writeAll("-1\n");
 
+    var next_id: Id = 0;
+    _ = next_id;
     for (0..N) |_| {
         const a = next(heap_mem, &in_i);
-        const a_id = strs.assign(a);
-
+        _ = a;
         const b = next(heap_mem, &in_i);
-        const b_id = strs.assign(b);
-
-        loves[a_id] = b_id;
+        _ = b;
     }
 }
 
