@@ -55,7 +55,7 @@ pub fn main() !void {
         });
     }
 
-    try std.fmt.format(stdout, "{d}", .{candidate.at(0).pos + 1});
+    try std.fmt.format(stdout, "{d}\n", .{candidate.at(0).pos + 1});
 }
 
 fn compare(a: []const u8, b: []const u8) usize {
