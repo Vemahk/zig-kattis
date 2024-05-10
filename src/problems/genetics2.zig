@@ -33,13 +33,19 @@ pub fn main() !void {
     outer: for (0..N) |n| {
         const nstr = next(heap_mem, &in_i);
 
+        var failed: bool = false;
+
         for (candidate.slice(), 0..) |c, i| {
             if (compare(c.str, nstr) != K) {
-                forsaken.add(nstr);
                 forsaken.add(c.str);
                 candidate.removeQuick(i);
-                continue :outer;
+                failed = true;
             }
+        }
+
+        if (failed) {
+            forsaken.add(nstr);
+            continue;
         }
 
         for (forsaken.slice()) |f| {
@@ -55,7 +61,7 @@ pub fn main() !void {
         });
     }
 
-    try std.fmt.format(stdout, "{d}\n", .{candidate.at(0).pos + 1});
+    try std.fmt.format(stdout, "{d}", .{candidate.at(0).pos + 1});
 }
 
 fn compare(a: []const u8, b: []const u8) usize {
