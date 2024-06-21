@@ -82,7 +82,6 @@ pub fn MaxList(comptime T: type, comptime max_size: comptime_int) type {
         len: usize = 0,
 
         pub fn add(self: *Self, t: T) void {
-            if (self.len >= max_size) unreachable;
             self.buf[self.len] = t;
             self.len += 1;
         }
@@ -102,6 +101,21 @@ pub fn MaxList(comptime T: type, comptime max_size: comptime_int) type {
             s[i] = s[self.len];
         }
     };
+}
+
+test "removeQuick" {
+    var list = MaxList(u8, 10){};
+    list.add(0);
+    list.add(1);
+    list.add(2);
+
+    std.debug.assert(list.at(0) == 0);
+    list.removeQuick(0);
+    std.debug.assert(list.at(0) == 2);
+    list.removeQuick(0);
+    std.debug.assert(list.at(0) == 1);
+    list.removeQuick(0);
+    std.debug.assert(list.len == 0);
 }
 
 fn next(buf: []u8, start: *usize) []const u8 {
